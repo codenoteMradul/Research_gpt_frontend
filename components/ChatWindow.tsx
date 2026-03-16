@@ -6,21 +6,9 @@ import type { ChatMessage, ExplainState } from "@/app/types";
 import { ExplanationPanel } from "./ExplanationPanel";
 import { MessageBubble } from "./MessageBubble";
 
-const starterPrompt =
-  "Explain JavaScript features like dynamic typing, closures, and platform independence.";
-
-const starterAssistantMessage =
-  "JavaScript is a versatile language used for interactive web apps, servers, and tooling. It supports dynamic typing, first-class functions, closures, and platform independent runtimes through engines like V8.";
-
 export function ChatWindow() {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: "assistant-starter",
-      role: "assistant",
-      content: starterAssistantMessage,
-    },
-  ]);
-  const [input, setInput] = useState(starterPrompt);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
   const [chatError, setChatError] = useState<string | null>(null);
   const [panelError, setPanelError] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<string | null>(null);
@@ -117,27 +105,15 @@ export function ChatWindow() {
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-6 lg:px-8">
-      <section className="grid flex-1 gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.9fr)]">
+      <section className="grid flex-1 gap-6 lg:items-start lg:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.9fr)]">
         <div className="glass-panel flex min-h-[80vh] flex-col rounded-[32px] border p-4 sm:p-6">
-          <div className="mb-6 flex flex-col gap-3 border-b border-[var(--border)] pb-5">
+          <div className="mb-6 flex flex-col gap-2 border-b border-[var(--border)] pb-5">
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--muted)]">
               Context-Preserving AI Research
             </p>
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <h1 className="text-3xl font-semibold tracking-tight">
-                  Research deeply without losing the thread
-                </h1>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-                  Ask a question in the main chat, then inspect words or phrases
-                  in a side panel so follow-up meaning checks never derail the
-                  core conversation.
-                </p>
-              </div>
-              <div className="rounded-full border border-[var(--border)] bg-[var(--surface-strong)] px-4 py-2 text-sm text-[var(--muted)]">
-                Backend: <span className="font-medium text-[var(--foreground)]">REST + OpenAI</span>
-              </div>
-            </div>
+            <h1 className="text-3xl font-semibold tracking-tight">
+              Research deeply without losing the thread
+            </h1>
           </div>
 
           <div
@@ -160,9 +136,6 @@ export function ChatWindow() {
 
           <div className="mt-6 border-t border-[var(--border)] pt-5">
             <div className="flex flex-col gap-3">
-              <label htmlFor="message" className="text-sm font-medium">
-                Main research prompt
-              </label>
               <textarea
                 id="message"
                 value={input}
@@ -176,10 +149,7 @@ export function ChatWindow() {
                 placeholder="Ask the AI to explain a topic..."
                 className="min-h-28 rounded-[24px] border border-[var(--border)] bg-[var(--surface-strong)] px-4 py-3 outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
               />
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-[var(--muted)]">
-                  Press Enter to send. Shift+Enter adds a new line.
-                </p>
+              <div className="flex justify-end">
                 <button
                   type="button"
                   onClick={handleSend}

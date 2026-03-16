@@ -19,7 +19,7 @@ export function ExplanationPanel({
 }: ExplanationPanelProps) {
   return (
     <aside
-      className={`glass-panel fade-up flex min-h-[320px] flex-col rounded-[32px] border p-6 ${
+      className={`glass-panel fade-up flex min-h-[320px] flex-col rounded-[32px] border p-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] ${
         isOpen ? "opacity-100" : "opacity-80"
       }`}
       style={{
@@ -32,7 +32,7 @@ export function ExplanationPanel({
             Context Panel
           </p>
           <h2 className="mt-2 text-2xl font-semibold">
-            {selection ? `"${selection}"` : "Click a term to inspect it"}
+            {selection ? `"${selection}"` : "Explanation"}
           </h2>
         </div>
         {isOpen ? (
@@ -46,13 +46,8 @@ export function ExplanationPanel({
         ) : null}
       </div>
 
-      <div className="flex-1 rounded-[24px] border border-[var(--border)] bg-[var(--surface-strong)] p-5 text-[15px] leading-7 text-[var(--foreground)]">
-        {!isOpen ? (
-          <p className="text-[var(--muted)]">
-            Your main research thread stays untouched. This panel is only for
-            short side explanations.
-          </p>
-        ) : null}
+      <div className="min-h-0 flex-1 overflow-y-auto rounded-[24px] border border-[var(--border)] bg-[var(--surface-strong)] p-5 text-[15px] leading-7 text-[var(--foreground)]">
+        {!isOpen ? null : null}
         {isLoading ? <p>Explaining the selected term...</p> : null}
         {!isLoading && error ? (
           <p className="text-rose-700">{error}</p>

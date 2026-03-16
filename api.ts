@@ -16,7 +16,17 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || "Request failed.");
+
+    try {
+      const parsed = JSON.parse(errorText) as { message?: string | string[] };
+      const message = Array.isArray(parsed.message)
+        ? parsed.message.join(", ")
+        : parsed.message;
+
+      throw new Error(message || "Request failed.");
+    } catch {
+      throw new Error(errorText || "Request failed.");
+    }
   }
 
   return response.json() as Promise<T>;

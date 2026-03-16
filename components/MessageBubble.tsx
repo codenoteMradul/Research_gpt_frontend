@@ -9,6 +9,7 @@ type MessageBubbleProps = {
 };
 
 const tokenPattern = /(\s+|[^\w]+)/g;
+const headingPattern = /^(Overview|Key points|Example):$/i;
 
 export function MessageBubble({
   message,
@@ -17,7 +18,7 @@ export function MessageBubble({
 }: MessageBubbleProps) {
   const isUser = message.role === "user";
   const normalizedSelection = selectedText?.trim().toLowerCase() ?? "";
-  const pieces = message.content.split(tokenPattern).filter(Boolean);
+  const lines = message.content.split("\n");
 
   const handleSelection = () => {
     if (isUser) {
@@ -45,48 +46,69 @@ export function MessageBubble({
       </p>
       <div
         className={`text-[15px] leading-7 ${
-          isUser ? "whitespace-pre-wrap" : "cursor-text"
+          isUser ? "whitespace-pre-wrap" : "cursor-text whitespace-pre-wrap"
         }`}
         onMouseUp={handleSelection}
       >
         {isUser
           ? message.content
-          : pieces.map((piece, index) => {
-              const isWord = /\w/.test(piece);
-              const highlighted =
-                normalizedSelection.length > 0 &&
-                normalizedSelection.split(/\s+/).includes(piece.toLowerCase());
+          : lines.map((line, lineIndex) => {
+              const pieces = line.split(tokenPattern).filter(Boolean);
+              const isHeading = headingPattern.test(line.trim());
 
-              if (!isWord) {
-                return <span key={`${message.id}-${index}`}>{piece}</span>;
+              if (pieces.length === 0) {
+                return <div key={`${message.id}-line-${lineIndex}`}>&nbsp;</div>;
               }
 
               return (
-                <span
-                  key={`${message.id}-${index}`}
-                  className={`rounded-md px-0.5 transition-colors ${
-                    highlighted ? "bg-[var(--accent-soft)] text-[var(--accent)]" : ""
-                  } hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]`}
-                  onClick={() => onExplain(piece, message.content, message.id)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      onExplain(piece, message.content, message.id);
-                    }
-                  }}
+                <div
+                  key={`${message.id}-line-${lineIndex}`}
+                  className={isHeading ? "font-semibold" : ""}
                 >
-                  {piece}
-                </span>
+                  {pieces.map((piece, pieceIndex) => {
+                    const isWord = /\w/.test(piece);
+                    const highlighted =
+                      normalizedSelection.length > 0 &&
+                      normalizedSelection
+                        .split(/\s+/)
+                        .includes(piece.toLowerCase());
+
+                    if (!isWord) {
+                      return (
+                        <span key={`${message.id}-${lineIndex}-${pieceIndex}`}>
+                          {piece}
+                        </span>
+                      );
+                    }
+
+                    return (
+                      <span
+                        key={`${message.id}-${lineIndex}-${pieceIndex}`}
+                        className={`rounded-md px-0.5 transition-colors ${
+                          highlighted
+                            ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                            : ""
+                        } hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]`}
+                        onClick={() =>
+                          onExplain(piece, message.content, message.id)
+                        }
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            onExplain(piece, message.content, message.id);
+                          }
+                        }}
+                      >
+                        {piece}
+                      </span>
+                    );
+                  })}
+                </div>
               );
             })}
       </div>
-      {!isUser ? (
-        <p className="mt-3 text-xs text-[var(--muted)]">
-          Click a word, or drag across multiple words, to open a side explanation.
-        </p>
-      ) : null}
     </article>
   );
 }
