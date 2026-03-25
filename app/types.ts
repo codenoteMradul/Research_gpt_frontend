@@ -6,8 +6,9 @@ export type ChatMessage = {
   content: string;
 };
 
-export type ExplainState = {
-  messageId: string;
-  selection: string;
+export type ContextTab = {
+  id: string;
+  query: string;
+  explanation: string;
   context: string;
 };

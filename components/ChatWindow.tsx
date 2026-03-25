@@ -2,19 +2,20 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { explainSelection, sendChatMessage } from "@/api";
-import type { ChatMessage, ExplainState } from "@/app/types";
+import type { ChatMessage, ContextTab } from "@/app/types";
 import { ExplanationPanel } from "./ExplanationPanel";
 import { MessageBubble } from "./MessageBubble";
 
 export function ChatWindow() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const [query, setQuery] = useState("");
+  const [tabs, setTabs] = useState<ContextTab[]>([]);
+  const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
   const [panelError, setPanelError] = useState<string | null>(null);
-  const [explanation, setExplanation] = useState<string | null>(null);
-  const [activeExplain, setActiveExplain] = useState<ExplainState | null>(null);
   const [isSending, startSending] = useTransition();
-  const [isExplaining, startExplaining] = useTransition();
+  const [isExplaining, setIsExplaining] = useState(false);
   const historyRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -71,35 +72,91 @@ export function ChatWindow() {
     });
   };
 
-  const handleExplain = (
-    selection: string,
-    context: string,
-    messageId: string,
-  ) => {
-    const nextExplainState = {
-      selection,
-      context,
-      messageId,
-    };
+  const handleSearch = async () => {
+    const nextQuery = query.trim();
 
-    setActiveExplain(nextExplainState);
-    setExplanation(null);
+    if (!nextQuery) {
+      return;
+    }
+
+    const currentTopic =
+      [...messages].reverse().find((message) => message.role === "assistant")
+        ?.content ?? "general";
+    const normalizedQuery = nextQuery.toLowerCase();
+    const existingTab = tabs.find(
+      (tab) => tab.query.trim().toLowerCase() === normalizedQuery,
+    );
+
+    if (existingTab) {
+      setActiveTabId(existingTab.id);
+      setQuery(existingTab.query);
+      setPanelError(null);
+      return;
+    }
+
+    setIsExplaining(true);
     setPanelError(null);
 
-    startExplaining(async () => {
-      try {
-        const { explanation: nextExplanation } = await explainSelection(
-          selection,
-          context,
-        );
-        setExplanation(nextExplanation);
-      } catch (error) {
-        setPanelError(
-          error instanceof Error
-            ? error.message
-            : "We could not explain the selected term.",
-        );
+    try {
+      const { explanation: nextExplanation } = await explainSelection(
+        nextQuery,
+        currentTopic,
+      );
+      const nextTab: ContextTab = {
+        id: crypto.randomUUID(),
+        query: nextQuery,
+        explanation: nextExplanation,
+        context: currentTopic,
+      };
+
+      setTabs((current) => [...current, nextTab]);
+      setActiveTabId(nextTab.id);
+    } catch (error) {
+      setPanelError(
+        error instanceof Error
+          ? error.message
+          : "We could not explain the selected term.",
+      );
+    } finally {
+      setIsExplaining(false);
+    }
+  };
+
+  const handleClear = () => {
+    setQuery("");
+    setPanelError(null);
+    setTabs([]);
+    setActiveTabId(null);
+  };
+
+  const handleActivateTab = (tabId: string) => {
+    const nextTab = tabs.find((tab) => tab.id === tabId);
+
+    if (!nextTab) {
+      return;
+    }
+
+    setActiveTabId(tabId);
+    setQuery(nextTab.query);
+    setPanelError(null);
+  };
+
+  const handleCloseTab = (tabId: string) => {
+    setTabs((current) => {
+      const closingIndex = current.findIndex((tab) => tab.id === tabId);
+      const nextTabs = current.filter((tab) => tab.id !== tabId);
+
+      if (tabId !== activeTabId) {
+        return nextTabs;
       }
+
+      const fallbackTab =
+        nextTabs[closingIndex] ?? nextTabs[closingIndex - 1] ?? null;
+
+      setActiveTabId(fallbackTab?.id ?? null);
+      setQuery(fallbackTab?.query ?? "");
+
+      return nextTabs;
     });
   };
 
@@ -121,16 +178,7 @@ export function ChatWindow() {
             className="flex-1 space-y-4 overflow-y-auto pr-1"
           >
             {messages.map((message) => (
-              <MessageBubble
-                key={message.id}
-                message={message}
-                selectedText={
-                  activeExplain?.messageId === message.id
-                    ? activeExplain.selection
-                    : null
-                }
-                onExplain={handleExplain}
-              />
+              <MessageBubble key={message.id} message={message} />
             ))}
           </div>
 
@@ -167,16 +215,16 @@ export function ChatWindow() {
         </div>
 
         <ExplanationPanel
-          isOpen={Boolean(activeExplain)}
-          selection={activeExplain?.selection ?? null}
-          explanation={explanation}
+          query={query}
+          tabs={tabs}
+          activeTabId={activeTabId}
           isLoading={isExplaining}
           error={panelError}
-          onClose={() => {
-            setActiveExplain(null);
-            setExplanation(null);
-            setPanelError(null);
-          }}
+          onQueryChange={setQuery}
+          onSearch={handleSearch}
+          onClear={handleClear}
+          onActivateTab={handleActivateTab}
+          onCloseTab={handleCloseTab}
         />
       </section>
     </main>
