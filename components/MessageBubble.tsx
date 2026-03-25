@@ -1,6 +1,7 @@
 "use client";
 
 import type { ChatMessage } from "@/app/types";
+import { FormattedExplanation } from "./FormattedExplanation";
 type MessageBubbleProps = {
   message: ChatMessage;
 };
@@ -19,9 +20,13 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       <p className="mb-3 text-xs font-semibold uppercase tracking-[0.24em] opacity-70">
         {isUser ? "Researcher" : "AI Analyst"}
       </p>
-      <div className="whitespace-pre-wrap text-[15px] leading-7">
-        {message.content}
-      </div>
+      {isUser ? (
+        <div className="whitespace-pre-wrap text-[15px] leading-7">
+          {message.content}
+        </div>
+      ) : (
+        <FormattedExplanation text={message.content} />
+      )}
     </article>
   );
 }

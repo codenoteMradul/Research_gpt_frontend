@@ -1,4 +1,4 @@
-import type { ChatMessage } from "./app/types";
+import type { ChatMessage, SearchDepth } from "./app/types";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
@@ -42,12 +42,17 @@ export function sendChatMessage(message: string, history: ChatRequestMessage[]) 
   });
 }
 
-export function explainSelection(word: string, context: string) {
+export function explainSelection(
+  word: string,
+  context: string,
+  depth: SearchDepth = "shallow",
+) {
   return request<{ explanation: string }>("/explain", {
     method: "POST",
     body: JSON.stringify({
       word,
       context,
+      depth,
     }),
   });
 }

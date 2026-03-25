@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { explainSelection, sendChatMessage } from "@/api";
-import type { ChatMessage, ContextTab } from "@/app/types";
+import type { ChatMessage, ContextTab, SearchDepth } from "@/app/types";
 import { ExplanationPanel } from "./ExplanationPanel";
 import { MessageBubble } from "./MessageBubble";
 
@@ -10,6 +10,7 @@ export function ChatWindow() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [query, setQuery] = useState("");
+  const [depth, setDepth] = useState<SearchDepth>("shallow");
   const [tabs, setTabs] = useState<ContextTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
@@ -84,12 +85,16 @@ export function ChatWindow() {
         ?.content ?? "general";
     const normalizedQuery = nextQuery.toLowerCase();
     const existingTab = tabs.find(
-      (tab) => tab.query.trim().toLowerCase() === normalizedQuery,
+      (tab) =>
+        tab.query.trim().toLowerCase() === normalizedQuery &&
+        tab.depth === depth &&
+        tab.context === currentTopic,
     );
 
     if (existingTab) {
       setActiveTabId(existingTab.id);
       setQuery(existingTab.query);
+      setDepth(existingTab.depth);
       setPanelError(null);
       return;
     }
@@ -101,12 +106,14 @@ export function ChatWindow() {
       const { explanation: nextExplanation } = await explainSelection(
         nextQuery,
         currentTopic,
+        depth,
       );
       const nextTab: ContextTab = {
         id: crypto.randomUUID(),
         query: nextQuery,
         explanation: nextExplanation,
         context: currentTopic,
+        depth,
       };
 
       setTabs((current) => [...current, nextTab]);
@@ -124,6 +131,7 @@ export function ChatWindow() {
 
   const handleClear = () => {
     setQuery("");
+    setDepth("shallow");
     setPanelError(null);
     setTabs([]);
     setActiveTabId(null);
@@ -138,6 +146,7 @@ export function ChatWindow() {
 
     setActiveTabId(tabId);
     setQuery(nextTab.query);
+    setDepth(nextTab.depth);
     setPanelError(null);
   };
 
@@ -155,6 +164,7 @@ export function ChatWindow() {
 
       setActiveTabId(fallbackTab?.id ?? null);
       setQuery(fallbackTab?.query ?? "");
+      setDepth(fallbackTab?.depth ?? "shallow");
 
       return nextTabs;
     });
@@ -216,11 +226,13 @@ export function ChatWindow() {
 
         <ExplanationPanel
           query={query}
+          depth={depth}
           tabs={tabs}
           activeTabId={activeTabId}
           isLoading={isExplaining}
           error={panelError}
           onQueryChange={setQuery}
+          onDepthChange={setDepth}
           onSearch={handleSearch}
           onClear={handleClear}
           onActivateTab={handleActivateTab}

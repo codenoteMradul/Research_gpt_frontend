@@ -1,14 +1,17 @@
 "use client";
 
-import type { ContextTab } from "@/app/types";
+import type { ContextTab, SearchDepth } from "@/app/types";
+import { FormattedExplanation } from "./FormattedExplanation";
 
 type ExplanationPanelProps = {
   query: string;
+  depth: SearchDepth;
   tabs: ContextTab[];
   activeTabId: string | null;
   isLoading: boolean;
   error: string | null;
   onQueryChange: (value: string) => void;
+  onDepthChange: (value: SearchDepth) => void;
   onSearch: () => void;
   onClear: () => void;
   onActivateTab: (tabId: string) => void;
@@ -17,11 +20,13 @@ type ExplanationPanelProps = {
 
 export function ExplanationPanel({
   query,
+  depth,
   tabs,
   activeTabId,
   isLoading,
   error,
   onQueryChange,
+  onDepthChange,
   onSearch,
   onClear,
   onActivateTab,
@@ -69,7 +74,7 @@ export function ExplanationPanel({
                       type="button"
                       onClick={() => onActivateTab(tab.id)}
                       className="max-w-32 truncate text-left outline-none"
-                      title={tab.query}
+                      title={`${tab.query} (${formatDepthLabel(tab.depth)})`}
                     >
                       {tab.query}
                     </button>
@@ -111,6 +116,40 @@ export function ExplanationPanel({
               placeholder="Type or paste a term to explain..."
               className="rounded-[18px] border border-[var(--border)] bg-[var(--surface-strong)] px-4 py-3 outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
             />
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-[var(--muted)]">Depth</p>
+              <div className="flex flex-wrap gap-2">
+                {DEPTH_OPTIONS.map((option) => {
+                  const isActive = option.value === depth;
+
+                  return (
+                    <label
+                      key={option.value}
+                      className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-2 text-sm transition ${
+                        isActive
+                          ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                          : "border-[var(--border)] bg-white/70 text-[var(--muted)]"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="context-depth"
+                        value={option.value}
+                        checked={isActive}
+                        onChange={() => onDepthChange(option.value)}
+                        className="sr-only"
+                      />
+                      <span
+                        className={`h-2.5 w-2.5 rounded-full ${
+                          isActive ? "bg-[var(--accent)]" : "bg-[var(--border)]"
+                        }`}
+                      />
+                      {option.label}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
             <div className="flex justify-end gap-2">
               <button
                 type="button"
@@ -140,12 +179,32 @@ export function ExplanationPanel({
             <p className="text-rose-700">{error}</p>
           ) : null}
           {!isLoading && !error && activeTab ? (
-            <div className="rounded-[20px] border border-[var(--border)] bg-white/55 p-4 whitespace-pre-wrap">
-              {activeTab.explanation}
+            <div className="space-y-3 rounded-[20px] border border-[var(--border)] bg-white/55 p-4">
+              <div className="flex items-center justify-between gap-3 text-sm text-[var(--muted)]">
+                <span className="truncate">Topic: {activeTab.query}</span>
+                <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1 font-medium text-[var(--accent)]">
+                  {formatDepthLabel(activeTab.depth)}
+                </span>
+              </div>
+              <FormattedExplanation text={activeTab.explanation} />
             </div>
           ) : null}
         </div>
       </div>
     </aside>
   );
+}
+
+const DEPTH_OPTIONS: { value: SearchDepth; label: string }[] = [
+  { value: "shallow", label: "Shallow" },
+  { value: "deep", label: "Deep" },
+  { value: "super", label: "Super Deep" },
+];
+
+function formatDepthLabel(depth: SearchDepth) {
+  if (depth === "super") {
+    return "Super Deep";
+  }
+
+  return depth.charAt(0).toUpperCase() + depth.slice(1);
 }
