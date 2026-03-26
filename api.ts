@@ -1,4 +1,4 @@
-import type { ChatMessage, SearchDepth } from "./app/types";
+import type { ChatMessage, SearchDepth, SharedChat } from "./app/types";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
@@ -54,5 +54,20 @@ export function explainSelection(
       context,
       depth,
     }),
+  });
+}
+
+export function createShareChat(messages: ChatRequestMessage[]) {
+  return request<{ url: string; id: string }>("/share", {
+    method: "POST",
+    body: JSON.stringify({
+      messages,
+    }),
+  });
+}
+
+export function getSharedChat(id: string) {
+  return request<SharedChat>(`/share/${id}`, {
+    method: "GET",
   });
 }

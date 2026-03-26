@@ -6,6 +6,12 @@ export type ChatMessage = {
   content: string;
 };
 
+export type SharedChat = {
+  id: string;
+  messages: Array<Pick<ChatMessage, "role" | "content">>;
+  createdAt: string;
+};
+
 export type SearchDepth = "shallow" | "deep" | "super";
 
 export type ContextTab = {

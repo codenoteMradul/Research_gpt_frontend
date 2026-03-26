@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { explainSelection, sendChatMessage } from "@/api";
+import { createShareChat, explainSelection, sendChatMessage } from "@/api";
 import type { ChatMessage, ContextTab, SearchDepth } from "@/app/types";
 import { ExplanationPanel } from "./ExplanationPanel";
 import { MessageBubble } from "./MessageBubble";
@@ -16,6 +16,10 @@ export function ChatWindow() {
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
   const [panelError, setPanelError] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareStatus, setShareStatus] = useState<string | null>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const [isSending, startSending] = useTransition();
   const [isExplaining, setIsExplaining] = useState(false);
   const historyRef = useRef<HTMLDivElement | null>(null);
@@ -171,6 +175,45 @@ export function ChatWindow() {
     });
   };
 
+  const handleShare = async () => {
+    if (messages.length === 0 || isSharing) {
+      return;
+    }
+
+    setIsSharing(true);
+    setShareStatus(null);
+
+    try {
+      const { url } = await createShareChat(
+        messages.map(({ role, content }) => ({ role, content })),
+      );
+
+      setShareUrl(url);
+      setIsShareModalOpen(true);
+      setShareStatus("Share link ready.");
+    } catch (error) {
+      setShareStatus(
+        error instanceof Error ? error.message : "Could not share this chat.",
+      );
+      setIsShareModalOpen(true);
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const handleCopyShareLink = async () => {
+    if (!shareUrl) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareStatus("Link copied!");
+    } catch {
+      setShareStatus("Could not copy the link.");
+    }
+  };
+
   return (
     <main className="relative mx-auto flex min-h-screen w-full max-w-[1400px] flex-col gap-6 px-4 py-6 lg:px-8">
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[420px] bg-[radial-gradient(circle_at_top,rgba(34,197,94,0.18),transparent_38%),radial-gradient(circle_at_75%_25%,rgba(59,130,246,0.16),transparent_24%)]" />
@@ -182,17 +225,36 @@ export function ChatWindow() {
           className="glass-panel flex min-h-[80vh] flex-col rounded-[32px] border shadow-lg shadow-black/30 transition-all duration-300 hover:scale-[1.01] hover:shadow-xl lg:h-[calc(100vh-2rem)]"
         >
           <div className="border-b border-[var(--border)] px-4 pb-5 pt-4 sm:px-6 sm:pt-6">
-            <div className="flex flex-col gap-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--muted)]">
-                Context-Preserving AI Research
-              </p>
-              <h1 className="text-3xl font-semibold tracking-tight text-[#f9fafb]">
-                Research deeply without losing the thread
-              </h1>
-              <p className="max-w-2xl text-sm leading-6 text-[var(--muted)]">
-                Ask layered questions, keep your context visible, and explore terms
-                without breaking the flow of the conversation.
-              </p>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--muted)]">
+                    Context-Preserving AI Research
+                  </p>
+                  {shareUrl ? (
+                    <span className="rounded-full border border-green-400/20 bg-green-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-green-300">
+                      Shared
+                    </span>
+                  ) : null}
+                </div>
+                <h1 className="text-3xl font-semibold tracking-tight text-[#f9fafb]">
+                  Research deeply without losing the thread
+                </h1>
+                <p className="max-w-2xl text-sm leading-6 text-[var(--muted)]">
+                  Ask layered questions, keep your context visible, and explore terms
+                  without breaking the flow of the conversation.
+                </p>
+              </div>
+              <motion.button
+                type="button"
+                onClick={handleShare}
+                disabled={messages.length === 0 || isSharing}
+                whileHover={{ scale: messages.length === 0 || isSharing ? 1 : 1.03 }}
+                whileTap={{ scale: messages.length === 0 || isSharing ? 1 : 0.97 }}
+                className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-[#e5e7eb] shadow-lg shadow-black/20 transition-all duration-300 hover:border-green-400/20 hover:bg-green-500/10 hover:text-green-300 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSharing ? "Sharing..." : "Share Chat"}
+              </motion.button>
             </div>
           </div>
 
@@ -283,6 +345,79 @@ export function ChatWindow() {
           onCloseTab={handleCloseTab}
         />
       </section>
+
+      <AnimatePresence>
+        {isShareModalOpen ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              className="w-full max-w-xl rounded-[28px] border border-white/10 bg-[#0b1120]/95 p-6 shadow-2xl shadow-black/40"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
+                    Share Chat
+                  </p>
+                  <h2 className="mt-2 text-2xl font-semibold text-[#f9fafb]">
+                    Create a read-only link
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsShareModalOpen(false)}
+                  className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm text-[var(--muted)] transition hover:bg-white/[0.08] hover:text-white"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="mt-5 space-y-4">
+                {shareUrl ? (
+                  <>
+                    <div className="rounded-[20px] border border-white/10 bg-[#050816] p-4">
+                      <p className="text-sm leading-6 text-[#c7d2e1] break-all">
+                        {shareUrl}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={handleCopyShareLink}
+                        className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-[#e5e7eb] transition hover:bg-white/[0.08]"
+                      >
+                        Copy Link
+                      </button>
+                      <a
+                        href={shareUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-full bg-[#16a34a] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#15803d]"
+                      >
+                        Open Link
+                      </a>
+                    </div>
+                  </>
+                ) : (
+                  <div className="rounded-[20px] border border-rose-400/20 bg-rose-500/10 p-4 text-sm text-rose-200">
+                    {shareStatus ?? "Could not generate a share link."}
+                  </div>
+                )}
+
+                {shareStatus ? (
+                  <p className="text-sm text-[var(--muted)]">{shareStatus}</p>
+                ) : null}
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </main>
   );
 }
