@@ -14,10 +14,10 @@ export function FormattedExplanation({ text }: { text: string }) {
               key={`heading-${index}`}
               className={`font-semibold tracking-tight text-[var(--foreground)] ${
                 block.level === 1
-                  ? "text-xl"
+                  ? "text-xl text-white"
                   : block.level === 2
-                    ? "text-lg"
-                    : "text-base"
+                    ? "text-lg text-slate-100"
+                    : "text-base text-slate-200"
               }`}
             >
               <InlineFormattedText text={block.text} />
@@ -29,11 +29,11 @@ export function FormattedExplanation({ text }: { text: string }) {
           return (
             <ul
               key={`list-${index}`}
-              className="space-y-2 rounded-[18px] bg-[var(--accent-soft)]/50 px-4 py-3"
+              className="space-y-2 rounded-[18px] border border-white/10 bg-[var(--accent-soft)]/60 px-4 py-3 shadow-lg shadow-black/20"
             >
               {block.items.map((item, itemIndex) => (
                 <li key={`item-${itemIndex}`} className="flex gap-3 leading-7">
-                  <span className="mt-2 h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+                  <span className="mt-2 h-1.5 w-1.5 rounded-full bg-[#22c55e]" />
                   <span className="min-w-0">
                     <InlineFormattedText text={item} />
                   </span>

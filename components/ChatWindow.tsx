@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { explainSelection, sendChatMessage } from "@/api";
 import type { ChatMessage, ContextTab, SearchDepth } from "@/app/types";
@@ -171,58 +172,101 @@ export function ChatWindow() {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-6 lg:px-8">
-      <section className="grid flex-1 gap-6 lg:items-start lg:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.9fr)]">
-        <div className="glass-panel flex min-h-[80vh] flex-col rounded-[32px] border p-4 sm:p-6">
-          <div className="mb-6 flex flex-col gap-2 border-b border-[var(--border)] pb-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--muted)]">
-              Context-Preserving AI Research
-            </p>
-            <h1 className="text-3xl font-semibold tracking-tight">
-              Research deeply without losing the thread
-            </h1>
+    <main className="relative mx-auto flex min-h-screen w-full max-w-[1400px] flex-col gap-6 px-4 py-6 lg:px-8">
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[420px] bg-[radial-gradient(circle_at_top,rgba(34,197,94,0.18),transparent_38%),radial-gradient(circle_at_75%_25%,rgba(59,130,246,0.16),transparent_24%)]" />
+      <section className="grid flex-1 gap-6 lg:items-start lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_460px]">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: "easeOut" }}
+          className="glass-panel flex min-h-[80vh] flex-col rounded-[32px] border shadow-lg shadow-black/30 transition-all duration-300 hover:scale-[1.01] hover:shadow-xl lg:h-[calc(100vh-2rem)]"
+        >
+          <div className="border-b border-[var(--border)] px-4 pb-5 pt-4 sm:px-6 sm:pt-6">
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--muted)]">
+                Context-Preserving AI Research
+              </p>
+              <h1 className="text-3xl font-semibold tracking-tight text-[#f9fafb]">
+                Research deeply without losing the thread
+              </h1>
+              <p className="max-w-2xl text-sm leading-6 text-[var(--muted)]">
+                Ask layered questions, keep your context visible, and explore terms
+                without breaking the flow of the conversation.
+              </p>
+            </div>
           </div>
 
           <div
             ref={historyRef}
-            className="flex-1 space-y-4 overflow-y-auto pr-1"
+            className="flex-1 space-y-4 overflow-y-auto px-4 pb-24 pt-6 pr-1 scroll-smooth sm:px-6"
           >
-            {messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
-            ))}
+            <AnimatePresence initial={false}>
+              {messages.map((message) => (
+                <MessageBubble key={message.id} message={message} />
+              ))}
+            </AnimatePresence>
+            {isSending ? (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="max-w-3xl rounded-[28px] border border-white/10 bg-white/5 p-5 shadow-lg shadow-black/20 backdrop-blur-xl"
+              >
+                <div className="shimmer mb-3 h-3 w-24 rounded-full bg-white/8" />
+                <div className="space-y-3">
+                  <div className="shimmer h-4 rounded-full bg-white/8" />
+                  <div className="shimmer h-4 w-11/12 rounded-full bg-white/8" />
+                  <div className="shimmer h-4 w-8/12 rounded-full bg-white/8" />
+                </div>
+              </motion.div>
+            ) : null}
           </div>
 
-          <div className="mt-6 border-t border-[var(--border)] pt-5">
-            <div className="flex flex-col gap-3">
-              <textarea
-                id="message"
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey) {
-                    event.preventDefault();
-                    handleSend();
-                  }
-                }}
-                placeholder="Ask the AI to explain a topic..."
-                className="min-h-28 rounded-[24px] border border-[var(--border)] bg-[var(--surface-strong)] px-4 py-3 outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
-              />
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={handleSend}
-                  disabled={isSending}
-                  className="rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isSending ? "Thinking..." : "Send"}
-                </button>
+          <div className="relative sticky bottom-0 px-4 pb-4 pt-6 sm:px-6 sm:pb-6">
+            <div className="pointer-events-none absolute inset-x-0 bottom-full h-16 bg-gradient-to-t from-[#0b1120] via-[#0b1120]/55 to-transparent" />
+            <div className="rounded-[28px] border border-white/10 bg-[#060b16]/88 p-3 shadow-[0_-8px_30px_rgba(0,0,0,0.24)] backdrop-blur-xl sm:p-4">
+              <div className="flex flex-col gap-3">
+                <textarea
+                  id="message"
+                  value={input}
+                  onChange={(event) => setInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                  placeholder="Ask the AI to explain a topic..."
+                  className="min-h-[92px] w-full resize-none rounded-[22px] border border-white/10 bg-[#050816] px-4 py-3 text-[15px] leading-7 text-[#f9fafb] placeholder:text-[#7f8aa3] outline-none shadow-inner shadow-black/20 transition-all duration-300 focus:border-green-400/60 focus:ring-2 focus:ring-green-500/50 focus:shadow-[0_0_0_1px_rgba(74,222,128,0.22),0_0_24px_rgba(34,197,94,0.14)]"
+                />
+                <div className="flex items-center justify-between gap-3 px-1">
+                  <p className="text-xs text-[#8b97b0]">
+                    Press Enter to send, Shift + Enter for a new line
+                  </p>
+                  <motion.button
+                    type="button"
+                    onClick={handleSend}
+                    disabled={isSending}
+                    whileHover={{ scale: isSending ? 1 : 1.05 }}
+                    whileTap={{ scale: isSending ? 1 : 0.95 }}
+                    className="rounded-full bg-[#22c55e] px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-green-500/20 transition-all duration-300 hover:bg-[#16a34a] hover:shadow-xl hover:shadow-green-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isSending ? "Thinking..." : "Send"}
+                  </motion.button>
+                </div>
+                {chatError ? (
+                  <motion.p
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-sm text-[var(--danger)]"
+                  >
+                    {chatError}
+                  </motion.p>
+                ) : null}
               </div>
-              {chatError ? (
-                <p className="text-sm text-rose-700">{chatError}</p>
-              ) : null}
             </div>
           </div>
-        </div>
+        </motion.div>
 
         <ExplanationPanel
           query={query}

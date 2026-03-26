@@ -47,7 +47,7 @@ export function ClickableText({
                 return (
                   <span
                     key={`${lineIndex}-${pieceIndex}`}
-                    className={isHighlighted ? "rounded-md bg-[var(--accent-soft)] px-0.5 text-[var(--accent)]" : ""}
+                    className={isHighlighted ? "rounded-md bg-[var(--accent-soft)] px-0.5 text-[#4ade80]" : ""}
                   >
                     {piece}
                   </span>
@@ -59,9 +59,9 @@ export function ClickableText({
                   key={`${lineIndex}-${pieceIndex}`}
                   className={`rounded-md px-0.5 transition-colors ${
                     isHighlighted
-                      ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                      ? "bg-[var(--accent-soft)] text-[#4ade80]"
                       : ""
-                  } hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]`}
+                  } hover:bg-[var(--accent-soft)] hover:text-[#4ade80]`}
                   onClick={() => onWordClick(piece, text)}
                   role="button"
                   tabIndex={0}
