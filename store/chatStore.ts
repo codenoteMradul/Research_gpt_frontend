@@ -12,7 +12,7 @@ import {
 
 const ACTIVE_CHAT_STORAGE_KEY = "research-gpt-active-chat-id";
 
-export function useChatStore() {
+export function useChatStore(isEnabled = true) {
   const [chatList, setChatList] = useState<ChatSessionSummary[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -20,6 +20,10 @@ export function useChatStore() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!isEnabled) {
+      return;
+    }
+
     void (async () => {
       try {
         setIsLoading(true);
@@ -75,7 +79,7 @@ export function useChatStore() {
         setIsLoading(false);
       }
     })();
-  }, []);
+  }, [isEnabled]);
 
   useEffect(() => {
     if (activeChatId) {

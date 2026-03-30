@@ -2,8 +2,10 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { createShareChat, explainSelection, sendChatMessage } from "@/api";
 import type { ChatMessage, ContextTab, SearchDepth } from "@/app/types";
+import { useAuth } from "@/context/authContext";
 import { saveChatMessages } from "@/services/chatService";
 import { useChatStore } from "@/store/chatStore";
 import { ExplanationPanel } from "./ExplanationPanel";
@@ -11,6 +13,8 @@ import { MessageBubble } from "./MessageBubble";
 import { Sidebar } from "./Sidebar";
 
 export function ChatWindow() {
+  const router = useRouter();
+  const { bootstrapped, isAuthenticated } = useAuth();
   const [input, setInput] = useState("");
   const [query, setQuery] = useState("");
   const [depth, setDepth] = useState<SearchDepth>("shallow");
@@ -38,7 +42,17 @@ export function ChatWindow() {
     setOptimisticMessages,
     renameChat,
     deleteChat,
-  } = useChatStore();
+  } = useChatStore(bootstrapped && isAuthenticated);
+
+  useEffect(() => {
+    if (!bootstrapped) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      router.replace("/login");
+    }
+  }, [bootstrapped, isAuthenticated, router]);
 
   useEffect(() => {
     historyRef.current?.scrollTo({
@@ -247,8 +261,18 @@ export function ChatWindow() {
     }
   };
 
+  if (!bootstrapped || !isAuthenticated) {
+    return (
+      <main className="relative flex min-h-screen items-center justify-center px-4 py-10">
+        <div className="rounded-[20px] border border-white/10 bg-white/[0.04] px-5 py-4 text-sm text-[var(--muted)]">
+          Loading your workspace...
+        </div>
+      </main>
+    );
+  }
+
   return (
-    <main className="relative mx-auto flex min-h-screen w-full max-w-[1600px] flex-col gap-6 px-4 py-6 lg:px-8">
+    <main className="relative mx-auto flex min-h-[calc(100vh-73px)] w-full max-w-[1600px] flex-col gap-6 px-4 py-6 lg:px-8">
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[420px] bg-[radial-gradient(circle_at_top,rgba(34,197,94,0.18),transparent_38%),radial-gradient(circle_at_75%_25%,rgba(59,130,246,0.16),transparent_24%)]" />
       <section className="grid flex-1 gap-6 lg:items-start lg:grid-cols-[300px_minmax(0,1fr)_380px] xl:grid-cols-[320px_minmax(0,1fr)_460px]">
         <Sidebar
@@ -293,18 +317,19 @@ export function ChatWindow() {
                     ? "Your conversations are saved and can be resumed from the sidebar."
                     : "Start a conversation to create your first saved chat."}
                 </p>
-
               </div>
-              <motion.button
-                type="button"
-                onClick={handleShare}
-                disabled={messages.length === 0 || isSharing}
-                whileHover={{ scale: messages.length === 0 || isSharing ? 1 : 1.03 }}
-                whileTap={{ scale: messages.length === 0 || isSharing ? 1 : 0.97 }}
-                className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-[#e5e7eb] shadow-lg shadow-black/20 transition-all duration-300 hover:border-green-400/20 hover:bg-green-500/10 hover:text-green-300 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isSharing ? "Sharing..." : "Share Chat"}
-              </motion.button>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <motion.button
+                  type="button"
+                  onClick={handleShare}
+                  disabled={messages.length === 0 || isSharing}
+                  whileHover={{ scale: messages.length === 0 || isSharing ? 1 : 1.03 }}
+                  whileTap={{ scale: messages.length === 0 || isSharing ? 1 : 0.97 }}
+                  className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-[#e5e7eb] shadow-lg shadow-black/20 transition-all duration-300 hover:border-green-400/20 hover:bg-green-500/10 hover:text-green-300 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isSharing ? "Sharing..." : "Share Chat"}
+                </motion.button>
+              </div>
             </div>
           </div>
 
