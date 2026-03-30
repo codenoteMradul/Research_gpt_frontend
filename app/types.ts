@@ -6,6 +6,19 @@ export type ChatMessage = {
   content: string;
 };
 
+export type PersistedChatMessage = Pick<ChatMessage, "role" | "content">;
+
+export type ChatSessionSummary = {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ChatSession = ChatSessionSummary & {
+  messages: ChatMessage[];
+};
+
 export type SharedChat = {
   id: string;
   messages: Array<Pick<ChatMessage, "role" | "content">>;

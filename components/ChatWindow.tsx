@@ -4,11 +4,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createShareChat, explainSelection, sendChatMessage } from "@/api";
 import type { ChatMessage, ContextTab, SearchDepth } from "@/app/types";
+import { saveChatMessages } from "@/services/chatService";
+import { useChatStore } from "@/store/chatStore";
 import { ExplanationPanel } from "./ExplanationPanel";
 import { MessageBubble } from "./MessageBubble";
+import { Sidebar } from "./Sidebar";
 
 export function ChatWindow() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [query, setQuery] = useState("");
   const [depth, setDepth] = useState<SearchDepth>("shallow");
@@ -23,6 +25,20 @@ export function ChatWindow() {
   const [isSending, startSending] = useTransition();
   const [isExplaining, setIsExplaining] = useState(false);
   const historyRef = useRef<HTMLDivElement | null>(null);
+  const {
+    activeChat,
+    activeChatId,
+    chatList,
+    messages,
+    isLoading,
+    error: historyError,
+    createNewChat,
+    switchChat,
+    hydrateSession,
+    setOptimisticMessages,
+    renameChat,
+    deleteChat,
+  } = useChatStore();
 
   useEffect(() => {
     historyRef.current?.scrollTo({
@@ -31,10 +47,22 @@ export function ChatWindow() {
     });
   }, [messages]);
 
+  useEffect(() => {
+    setQuery("");
+    setDepth("shallow");
+    setPanelError(null);
+    setTabs([]);
+    setActiveTabId(null);
+    setShareUrl(null);
+    setShareStatus(null);
+    setIsShareModalOpen(false);
+    setChatError(null);
+  }, [activeChatId]);
+
   const handleSend = () => {
     const trimmedInput = input.trim();
 
-    if (!trimmedInput || isSending) {
+    if (!trimmedInput || isSending || !activeChatId) {
       return;
     }
 
@@ -44,33 +72,38 @@ export function ChatWindow() {
       content: trimmedInput,
     };
 
-    const nextHistory = [...messages, nextUserMessage];
-    setMessages(nextHistory);
+    const chatId = activeChatId;
+    const historySnapshot = messages.map(({ role, content }) => ({
+      role,
+      content,
+    }));
+
+    setOptimisticMessages(chatId, (current) => [...current, nextUserMessage]);
     setInput("");
     setChatError(null);
 
     startSending(async () => {
       try {
-        const { response } = await sendChatMessage(
-          trimmedInput,
-          messages.map(({ role, content }) => ({ role, content })),
-        );
+        const { response } = await sendChatMessage(trimmedInput, historySnapshot);
+        const assistantMessage: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: response,
+        };
 
-        setMessages((current) => [
-          ...current,
-          {
-            id: crypto.randomUUID(),
-            role: "assistant",
-            content: response,
-          },
+        const session = await saveChatMessages(chatId, [
+          { role: nextUserMessage.role, content: nextUserMessage.content },
+          { role: assistantMessage.role, content: assistantMessage.content },
         ]);
+
+        hydrateSession(session);
       } catch (error) {
         setChatError(
           error instanceof Error
             ? error.message
             : "We could not get a response from the backend.",
         );
-        setMessages((current) =>
+        setOptimisticMessages(chatId, (current) =>
           current.filter((message) => message.id !== nextUserMessage.id),
         );
         setInput(trimmedInput);
@@ -215,9 +248,27 @@ export function ChatWindow() {
   };
 
   return (
-    <main className="relative mx-auto flex min-h-screen w-full max-w-[1400px] flex-col gap-6 px-4 py-6 lg:px-8">
+    <main className="relative mx-auto flex min-h-screen w-full max-w-[1600px] flex-col gap-6 px-4 py-6 lg:px-8">
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[420px] bg-[radial-gradient(circle_at_top,rgba(34,197,94,0.18),transparent_38%),radial-gradient(circle_at_75%_25%,rgba(59,130,246,0.16),transparent_24%)]" />
-      <section className="grid flex-1 gap-6 lg:items-start lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_460px]">
+      <section className="grid flex-1 gap-6 lg:items-start lg:grid-cols-[300px_minmax(0,1fr)_380px] xl:grid-cols-[320px_minmax(0,1fr)_460px]">
+        <Sidebar
+          chats={chatList}
+          activeChatId={activeChatId}
+          isLoading={isLoading}
+          onCreateChat={() => {
+            void createNewChat();
+          }}
+          onSelectChat={(chatId) => {
+            void switchChat(chatId);
+          }}
+          onDeleteChat={(chatId) => {
+            void deleteChat(chatId);
+          }}
+          onRenameChat={(chatId, title) => {
+            void renameChat(chatId, title);
+          }}
+        />
+
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
@@ -228,9 +279,6 @@ export function ChatWindow() {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--muted)]">
-                    Context-Preserving AI Research
-                  </p>
                   {shareUrl ? (
                     <span className="rounded-full border border-green-400/20 bg-green-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-green-300">
                       Shared
@@ -238,12 +286,14 @@ export function ChatWindow() {
                   ) : null}
                 </div>
                 <h1 className="text-3xl font-semibold tracking-tight text-[#f9fafb]">
-                  Research deeply without losing the thread
+                  {activeChat?.title ?? "Mradul GPT"}
                 </h1>
-                <p className="max-w-2xl text-sm leading-6 text-[var(--muted)]">
-                  Ask layered questions, keep your context visible, and explore terms
-                  without breaking the flow of the conversation.
+                <p className="text-sm leading-6 text-[var(--muted)]">
+                  {activeChat
+                    ? "Your conversations are saved and can be resumed from the sidebar."
+                    : "Start a conversation to create your first saved chat."}
                 </p>
+
               </div>
               <motion.button
                 type="button"
@@ -263,6 +313,24 @@ export function ChatWindow() {
             className="flex-1 space-y-4 overflow-y-auto px-4 pb-24 pt-6 pr-1 scroll-smooth sm:px-6"
           >
             <AnimatePresence initial={false}>
+              {historyError ? (
+                <motion.p
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-[20px] border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200"
+                >
+                  {historyError}
+                </motion.p>
+              ) : null}
+              {!historyError && messages.length === 0 && !isLoading ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-[28px] border border-dashed border-white/10 bg-white/[0.03] p-6 text-sm leading-7 text-[var(--muted)]"
+                >
+                  Start a new chat from the sidebar or ask your first question here.
+                </motion.div>
+              ) : null}
               {messages.map((message) => (
                 <MessageBubble key={message.id} message={message} />
               ))}
@@ -308,9 +376,9 @@ export function ChatWindow() {
                   <motion.button
                     type="button"
                     onClick={handleSend}
-                    disabled={isSending}
-                    whileHover={{ scale: isSending ? 1 : 1.05 }}
-                    whileTap={{ scale: isSending ? 1 : 0.95 }}
+                    disabled={isSending || isLoading || !activeChatId}
+                    whileHover={{ scale: isSending || isLoading || !activeChatId ? 1 : 1.05 }}
+                    whileTap={{ scale: isSending || isLoading || !activeChatId ? 1 : 0.95 }}
                     className="rounded-full bg-[#22c55e] px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-green-500/20 transition-all duration-300 hover:bg-[#16a34a] hover:shadow-xl hover:shadow-green-500/30 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {isSending ? "Thinking..." : "Send"}
