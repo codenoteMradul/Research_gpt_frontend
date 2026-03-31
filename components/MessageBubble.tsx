@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import type { ChatMessage } from "@/app/types";
-import { FormattedExplanation } from "./FormattedExplanation";
+import { ChatMessage as ChatMessageContent } from "./ChatMessage";
 
 type MessageBubbleProps = {
   message: ChatMessage;
@@ -32,7 +32,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           {message.content}
         </div>
       ) : (
-        <FormattedExplanation text={message.content} />
+        <ChatMessageContent content={message.content} />
       )}
     </motion.article>
   );

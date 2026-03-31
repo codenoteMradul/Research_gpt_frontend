@@ -96,6 +96,16 @@ export function useChatStore(isEnabled = true) {
 
   async function createNewChat() {
     try {
+      const reusableSession = await findReusableEmptyChat();
+
+      if (reusableSession) {
+        if (reusableSession.id !== activeChatId) {
+          applySession(reusableSession);
+        }
+
+        return reusableSession;
+      }
+
       const session = await createChatSession();
       applySession(session);
       return session;
@@ -166,6 +176,32 @@ export function useChatStore(isEnabled = true) {
     }
   }
 
+  async function findReusableEmptyChat() {
+    if (activeChatId && isSessionEmpty({ messages })) {
+      return {
+        id: activeChatId,
+        title: activeChat?.title ?? "New Chat",
+        createdAt: activeChat?.createdAt ?? new Date().toISOString(),
+        updatedAt: activeChat?.updatedAt ?? new Date().toISOString(),
+        messages,
+      } satisfies ChatSession;
+    }
+
+    for (const chat of chatList) {
+      if (chat.id === activeChatId) {
+        continue;
+      }
+
+      const session = await getChatSession(chat.id);
+
+      if (isSessionEmpty(session)) {
+        return session;
+      }
+    }
+
+    return null;
+  }
+
   async function deleteChat(chatId: string) {
     try {
       await deleteChatSession(chatId);
@@ -210,6 +246,10 @@ export function useChatStore(isEnabled = true) {
         right.updatedAt.localeCompare(left.updatedAt),
       );
     });
+  }
+
+  function isSessionEmpty(session: Pick<ChatSession, "messages">) {
+    return !Array.isArray(session.messages) || session.messages.length === 0;
   }
 
   return {
